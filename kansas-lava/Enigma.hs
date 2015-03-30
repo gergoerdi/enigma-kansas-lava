@@ -55,7 +55,7 @@ joinRotors :: (Clock clk, Size n, Enum n, Rep a, Size a, Enum a)
            -> (Matrix n (Signal clk (Rotor a)), Signal clk a)
 joinRotors rotors inputChar = (rotors', outputChar)
   where
-    (rotors', (_, outputChar)) = Matrix.scanR scramble ((low, inputChar), rotors)
+    (rotors', (_, outputChar)) = Matrix.scanR scramble ((high, inputChar), rotors)
 
 backSignal :: (Clock clk, Size n, Rep a, Size a)
            => Matrix n (Signal clk (Rotor a)) -> Signal clk a -> Signal clk a
