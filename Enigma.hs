@@ -126,11 +126,12 @@ mkEnigma plugboard reflector rotors startingPositions =
       where
         n = fromIntegral (maxBound :: Letter) + 1 :: Int
 
-enigma :: (Clock clk, Size n, Enum n) => EnigmaCfg n -> Signal clk Letter -> Signal clk Letter
+enigma :: (Clock clk, Size n, Enum n) => EnigmaCfg n -> Signal clk (Enabled Letter) -> Signal clk Letter
 enigma EnigmaCfg{..} s = s'
   where
-    (rotors, s') = enigmaLoop cfgPlugboard cfgReflector
-                   (unpack . register cfgRotors . pack $ rotors, s)
+    (rotors', s') = enigmaLoop cfgPlugboard cfgReflector
+                    (unpack $ register cfgRotors rotors, enabledVal s)
+    rotors = mux (isEnabled s) (delay rotors, pack rotors')
 
 testEnigma :: EnigmaCfg X3
 testEnigma = mkEnigma plugboard reflector rotors (Matrix.fromList . map toLetter $ "GCR")
@@ -141,6 +142,7 @@ test1 = test "ENIGMAWASAREALLYCOOLMACHINE"
 test :: String -> String
 test s = fromSignal $ enigma_ $ toSignal s
   where
-    enigma_ = enigma testEnigma :: Seq Letter -> Seq Letter
-    toSignal = toS . map toLetter
+    enigma_ = enigma testEnigma :: Seq (Enabled Letter) -> Seq Letter
+    toSignal = toS . concatMap (\c -> [Just $ toLetter c, Nothing, Nothing])
+    fromSignal = map fromLetter . take (Prelude.length s) . catMaybes . fromS
     fromSignal = map fromLetter . take (Prelude.length s) . catMaybes . fromS
