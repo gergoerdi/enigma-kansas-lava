@@ -6,6 +6,7 @@ import Language.KansasLava
 import Data.Sized.Matrix as Matrix
 import Data.Char (ord, chr)
 import Control.Applicative ((<$>))
+import Data.Maybe (catMaybes)
 
 type Letter = X26 -- 26 letters 'A'..'Z'
 
@@ -135,5 +136,12 @@ enigma EnigmaCfg{..} s = s'
 testEnigma :: EnigmaCfg X3
 testEnigma = mkEnigma plugboard reflector rotors (Matrix.fromList . map toLetter $ "GCR")
 
-test1 :: Signal CLK Letter
-test1 = enigma testEnigma $ toS . map toLetter $ "ENIGMAWASAREALLYCOOLMACHINE"
+test1 :: String
+test1 = test "ENIGMAWASAREALLYCOOLMACHINE"
+
+test :: String -> String
+test s = fromSignal $ enigma_ $ toSignal s
+  where
+    enigma_ = enigma testEnigma :: Seq Letter -> Seq Letter
+    toSignal = toS . map toLetter
+    fromSignal = map fromLetter . take (Prelude.length s) . catMaybes . fromS
