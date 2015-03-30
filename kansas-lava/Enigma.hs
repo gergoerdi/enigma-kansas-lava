@@ -48,7 +48,7 @@ rotate :: (Clock clk, Rep a, Size a, Enum a, Rep b)
 -- rotate mtx = pack . forAll $ \i -> mtx .!. pureS (if i == minBound then maxBound else succ i)
 rotate = pack . ixmap xform . unpack
   where
-    xform i = if i == minBound then maxBound else succ i
+    xform i = if i == maxBound then minBound else succ i
 
 joinRotors :: (Clock clk, Size n, Enum n, Rep a, Size a, Enum a)
            => Matrix n (Signal clk (Rotor a)) -> Signal clk a
