@@ -46,7 +46,6 @@ scramble ((rotateThis, c), rotor) = (rotor', (rotateNext, c'))
 
 rotate :: (Clock clk, Rep a, Size a, Enum a, Rep b)
        => Signal clk (Matrix a b) -> Signal clk (Matrix a b)
--- rotate mtx = pack . forAll $ \i -> mtx .!. pureS (if i == minBound then maxBound else succ i)
 rotate = pack . ixmap xform . unpack
   where
     xform i = if i == maxBound then minBound else succ i
