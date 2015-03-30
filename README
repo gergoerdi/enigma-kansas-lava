@@ -1,0 +1,3 @@
+Kansas Lava implementation of the Enigma machine.
+
+Based on the Cryptol spec at https://github.com/rsnikhil/Enigma_Cryptol_Bluespec_BSV
