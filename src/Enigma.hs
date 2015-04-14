@@ -99,11 +99,11 @@ enigmaLoop :: (Clock clk, Size n, Enum n)
            -> (Matrix n (Rotor clk Letter), Signal clk Letter)
 enigmaLoop plugboard reflector (rotors, c0) = (rotors', c5)
   where
-    c1 = substFwd (pureS plugboard) c0
+    c1 = substFwd (pack $ fmap pureS plugboard) c0
     (rotors', c2) = joinRotors rotors c1
-    c3 = substFwd (pureS reflector) c2
+    c3 = substFwd (pack $ fmap pureS reflector) c2
     c4 = backSignal rotors c3
-    c5 = substBwd (pureS plugboard) c4
+    c5 = substBwd (pack $ fmap pureS plugboard) c4
 
 data EnigmaCfg n = EnigmaCfg{ cfgPlugboard :: Plugboard
                             , cfgReflector :: Reflector
