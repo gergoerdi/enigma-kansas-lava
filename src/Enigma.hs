@@ -36,55 +36,55 @@ substBwd :: (Clock clk, Rep a, Size a)
          => Signal clk (Permutation a) -> Signal clk a -> Signal clk a
 substBwd pi x = findS (.==. x) pi
 
+type Plugboard = Permutation Letter
+type Reflector = Permutation Letter
+type Rotor clk a = Matrix a (Signal clk (a, Bool))
+type RotorInit a = Matrix a (a, Bool)
+
 scramble :: (Clock clk, Rep a, Size a, Enum a)
-         => ((Signal clk Bool, Signal clk a), Signal clk (Rotor a))
-         -> (Signal clk (Rotor a), (Signal clk Bool, Signal clk a))
+         => ((Signal clk Bool, Signal clk a), Rotor clk a)
+         -> (Rotor clk a, (Signal clk Bool, Signal clk a))
 scramble ((rotateThis, c), rotor) = (rotor', (rotateNext, c'))
   where
-    c' = fst . unpack $ rotor .!. c
-    rotateNext = snd . unpack $ rotor .!. minBound
-    rotor' = mux rotateThis (rotor, rotate rotor)
+    (c', _) = unpack $ pack rotor .!. c
+    (_, rotateNext) = unpack $ rotor ! minBound
+    rotor' = Matrix.zipWith (curry $ mux rotateThis) rotor (rotate rotor)
 
 rotate :: (Clock clk, Rep a, Size a, Enum a, Rep b)
-       => Signal clk (Matrix a b) -> Signal clk (Matrix a b)
-rotate = pack . ixmap xform . unpack
+       => Matrix a (Signal clk b) -> Matrix a (Signal clk b)
+rotate = ixmap xform
   where
     xform i = if i == maxBound then minBound else succ i
 
 joinRotors :: (Clock clk, Size n, Enum n, Rep a, Size a, Enum a)
-           => Matrix n (Signal clk (Rotor a)) -> Signal clk a
-           -> (Matrix n (Signal clk (Rotor a)), Signal clk a)
+           => Matrix n (Rotor clk a) -> Signal clk a
+           -> (Matrix n (Rotor clk a), Signal clk a)
 joinRotors rotors inputChar = (rotors', outputChar)
   where
     (rotors', (_, outputChar)) = Matrix.scanR scramble ((high, inputChar), rotors)
 
 backSignal :: (Clock clk, Size n, Rep a, Size a)
-           => Matrix n (Signal clk (Rotor a)) -> Signal clk a -> Signal clk a
+           => Matrix n (Rotor clk a) -> Signal clk a -> Signal clk a
 backSignal rotors inputChar = foldr (substBwd . dropNotches) inputChar $ Matrix.toList $ rotors
   where
     dropNotches :: (Clock clk, Rep a, Size a)
-                => Signal clk (Rotor a) -> Signal clk (Permutation a)
-    dropNotches = pack . fmap (fst . unpack) . unpack
-
-type Plugboard = Permutation Letter
+                => Rotor clk a -> Signal clk (Permutation a)
+    dropNotches = pack . fmap (fst . unpack)
 
 plugboard :: Plugboard
 plugboard = mkPermutation "HBGDEFCAIJKOWNLPXRSVYTMQUZ"
 
-type Reflector = Permutation Letter
-
 reflector :: Reflector
 reflector = mkPermutation "FEIPBATSCYVUWZQDOXHGLKMRJN"
 
-type Rotor a = Matrix a (a, Bool)
 
-mkRotor :: String -> String -> Rotor Letter
+mkRotor :: String -> String -> RotorInit Letter
 mkRotor perm notches = addNotch <$> mkPermutation perm
   where
     addNotch x = (x, x `elem` notches')
     notches' = map toLetter notches
 
-rotors :: Matrix X3 (Rotor Letter)
+rotors :: Matrix X3 (RotorInit Letter)
 rotors = Matrix.fromList $
          [ "RJICAWVQZODLUPYFEHXSMTKNGB" >< "IO"
          , "DWYOLETKNVQPHURZJMSFIGXCBA" >< "B"
@@ -95,8 +95,8 @@ rotors = Matrix.fromList $
 
 enigmaLoop :: (Clock clk, Size n, Enum n)
            => Plugboard -> Reflector
-           -> (Matrix n (Signal clk (Rotor Letter)), Signal clk Letter)
-           -> (Matrix n (Signal clk (Rotor Letter)), Signal clk Letter)
+           -> (Matrix n (Rotor clk Letter), Signal clk Letter)
+           -> (Matrix n (Rotor clk Letter), Signal clk Letter)
 enigmaLoop plugboard reflector (rotors, c0) = (rotors', c5)
   where
     c1 = substFwd (pureS plugboard) c0
@@ -107,12 +107,12 @@ enigmaLoop plugboard reflector (rotors, c0) = (rotors', c5)
 
 data EnigmaCfg n = EnigmaCfg{ cfgPlugboard :: Plugboard
                             , cfgReflector :: Reflector
-                            , cfgRotors :: Matrix n (Rotor Letter)
+                            , cfgRotors :: Matrix n (RotorInit Letter)
                             }
                  deriving Show
 
 mkEnigma :: (Size n)
-         => Plugboard -> Reflector -> Matrix n (Rotor Letter)
+         => Plugboard -> Reflector -> Matrix n (RotorInit Letter)
          -> Matrix n Letter -> EnigmaCfg n
 mkEnigma plugboard reflector rotors startingPositions =
     EnigmaCfg{ cfgPlugboard = plugboard
@@ -131,8 +131,9 @@ enigma :: (Clock clk, Size n, Enum n) => EnigmaCfg n -> Signal clk (Enabled Lett
 enigma EnigmaCfg{..} s = packEnabled (isEnabled s) s'
   where
     (rotors', s') = enigmaLoop cfgPlugboard cfgReflector
-                    (unpack $ register cfgRotors rotors, enabledVal s)
-    rotors = mux (isEnabled s) (delay rotors, pack rotors')
+                    (Matrix.zipWith (Matrix.zipWith register) cfgRotors rotors, enabledVal s)
+    -- rotors = Matrix.zipWith (curry $ mux (isEnabled s)) (delay <$> rotors) rotors'
+    rotors = Matrix.zipWith (Matrix.zipWith $ \r r' -> mux (isEnabled s) (delay r, r')) rotors rotors'
 
 testEnigma :: EnigmaCfg X3
 testEnigma = mkEnigma plugboard reflector rotors (Matrix.fromList . map toLetter $ "GCR")
