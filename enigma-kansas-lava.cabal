@@ -1,0 +1,36 @@
+name:                enigma-kansas-lava
+version:             0.0.0.0
+license:             BSD3
+license-file:        LICENSE
+copyright:           (C) 2015 Gergo Erdi
+author:              Gergo Erdi
+maintainer:          Gergo Erdi <gergo@erdi.hu>
+category:            Hardware
+build-type:          Simple
+cabal-version:       >=1.10
+
+executable enigma-kansas-lava
+  hs-source-dirs:      src
+  main-is:             Enigma/Build.hs
+  other-modules:
+        Enigma
+        Enigma.Board
+        Enigma.Keyboard
+        
+  build-depends:
+        base >=4.7 && < 5,
+        containers,
+        kansas-lava >=0.2.4 && < 0.2.5,
+        sized-types >=0.3,
+        netlist >=0.3 && <0.4,
+        netlist-to-vhdl >=0.3 && <0.4,
+        kansas-lava-cores >= 0.1 && < 0.2,
+        kansas-lava-papilio >= 0.1.1 && < 0.2,
+        kansas-lava-shake >= 0.1.1 && < 0.2,
+        shake,
+        directory
+  default-language:    Haskell2010
+  other-extensions:    ScopedTypeVariables, RecordWildCards, FlexibleInstances, TypeFamilies, NoMonomorphismRestriction
+  Ghc-Options:         -Werror
+                       -fwarn-unused-imports -fwarn-unused-matches
+                       -fwarn-unused-binds -fwarn-missing-signatures

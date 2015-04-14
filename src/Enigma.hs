@@ -6,7 +6,8 @@ import Language.KansasLava
 import Data.Sized.Matrix as Matrix
 import Data.Char (ord, chr)
 import Control.Applicative ((<$>))
-import Data.Maybe (catMaybes)
+import Data.Maybe (mapMaybe)
+import Control.Monad (join)
 
 type Letter = X26 -- 26 letters 'A'..'Z'
 
@@ -126,8 +127,8 @@ mkEnigma plugboard reflector rotors startingPositions =
       where
         n = fromIntegral (maxBound :: Letter) + 1 :: Int
 
-enigma :: (Clock clk, Size n, Enum n) => EnigmaCfg n -> Signal clk (Enabled Letter) -> Signal clk Letter
-enigma EnigmaCfg{..} s = s'
+enigma :: (Clock clk, Size n, Enum n) => EnigmaCfg n -> Signal clk (Enabled Letter) -> Signal clk (Enabled Letter)
+enigma EnigmaCfg{..} s = packEnabled (isEnabled s) s'
   where
     (rotors', s') = enigmaLoop cfgPlugboard cfgReflector
                     (unpack $ register cfgRotors rotors, enabledVal s)
@@ -136,13 +137,12 @@ enigma EnigmaCfg{..} s = s'
 testEnigma :: EnigmaCfg X3
 testEnigma = mkEnigma plugboard reflector rotors (Matrix.fromList . map toLetter $ "GCR")
 
-test1 :: String
-test1 = test "ENIGMAWASAREALLYCOOLMACHINE"
+testInput :: String
+testInput = "ENIGMAWASAREALLYCOOLMACHINE"
 
 test :: String -> String
 test s = fromSignal $ enigma_ $ toSignal s
   where
-    enigma_ = enigma testEnigma :: Seq (Enabled Letter) -> Seq Letter
+    enigma_ = enigma testEnigma :: Seq (Enabled Letter) -> Seq (Enabled Letter)
     toSignal = toS . concatMap (\c -> [Just $ toLetter c, Nothing, Nothing])
-    fromSignal = map fromLetter . take (Prelude.length s) . catMaybes . fromS
-    fromSignal = map fromLetter . take (Prelude.length s) . catMaybes . fromS
+    fromSignal = map fromLetter . take (Prelude.length s) . mapMaybe join . fromS
