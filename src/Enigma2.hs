@@ -10,6 +10,7 @@ import Data.List (find)
 import Control.Applicative
 import Control.Arrow
 import qualified Data.Foldable as F
+import Data.Maybe (catMaybes)
 
 import Data.Char (ord, chr)
 
@@ -94,17 +95,26 @@ backSignal :: (Size n, Bounded n, Enum n, Rep a, Size a, Integral a)
            -> Decoded clk a
 backSignal rotors rs sig = F.foldr (uncurry rotorBwd) sig $ Matrix.zipWith (,) rotors rs
 
-enigma :: (Clock clk, Size n, Enum n)
+enigmaPipe :: (Clock clk, Size n, Enum n)
        => Plugboard -> Matrix n (Rotor Letter) -> Reflector
        -> Matrix n (Signal clk Letter) -> Decoded clk Letter
        -> (Matrix n (Signal clk Letter), Decoded clk Letter)
-enigma plugboard rotors reflector rs sig0 = (rs', sig5)
+enigmaPipe plugboard rotors reflector rs sig0 = (rs', sig5)
   where
     sig1 = permuteFwd plugboard $ sig0
     (rs', sig2) = joinRotors rotors rs sig1
     sig3 = permuteFwd reflector sig2
     sig4 = backSignal rotors rs sig3
     sig5 = permuteBwd plugboard sig4
+
+enigma :: (Clock clk, Size n, Enum n)
+       => Plugboard -> Matrix n (Rotor Letter) -> Reflector
+       -> Matrix n Letter
+       -> Decoded clk Letter -> Decoded clk Letter
+enigma plugboard rotors reflector rs0 sig = sig'
+  where
+    (rs', sig') = enigmaPipe plugboard rotors reflector rs sig
+    rs = Matrix.zipWith register rs0 rs'
 
 plugboard :: Plugboard
 plugboard = mkPermutation "HBGDEFCAIJKOWNLPXRSVYTMQUZ"
@@ -148,6 +158,7 @@ rotateLS = flip $ primXS2 shallow "rotateL"
         count <- unX count
         return $ rotateL arg $ fromIntegral count
 
+{-
 test :: Signal CLK Letter
 test = takeS 1 $ encode $ permuteFwd plugboard $ rotateFwd rotation input
   where
@@ -159,3 +170,14 @@ test' = reifyFabric $ do
     input <- unpackMatrix <$> inStdLogicVector "INPUT"
     (rot :: Signal CLK Letter) <- inStdLogicVector "ROT"
     outStdLogicVector "OUTPUT" $ packMatrix $ rotateFwd rot input
+-}
+
+testInput :: String
+testInput = "ENIGMAWASAREALLYCOOLMACHINE"
+
+test :: String -> String
+test s = fromSignal $ enigma_ $ toSignal s
+  where
+    enigma_ = enigma plugboard rotors reflector rotorInit
+    toSignal s = decode (toS $ map toLetter s :: Seq Letter)
+    fromSignal = map fromLetter . take (Prelude.length s) . catMaybes . fromS . encode
