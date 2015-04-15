@@ -43,7 +43,7 @@ fabric = do
     lcdOut lcd
 
 circuit :: (Clock clk) => Signal clk (Enabled U8) -> Signal clk (Enabled U8)
-circuit = mapEnabled toByte . enigma testEnigma . mapEnabled fromByte
+circuit = mapEnabled toByte . testEnigma . mapEnabled fromByte
   where
     fromByte x = unsigned $ x - 0x41
     toByte x = unsigned x + 0x41
