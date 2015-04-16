@@ -83,8 +83,7 @@ rotorFwd :: forall clk a. (Size a, Rep a, Num a, Size (SUCC (W a)))
 rotorFwd rotor rotateThis r sig = (rotateNext, r', sig')
   where
     (p, notches) = (fmap fst &&& (unsignedFromBits . fmap snd)) rotor
-    -- rotateNext = pureS notches `testABit` r
-    rotateNext = low
+    rotateNext = commentS "rotateNext" (pureS notches) `testABit` r
     r' = mux rotateThis (r, next r)
     sig' = rotateFwd r >>> permuteFwd p $ sig
 
