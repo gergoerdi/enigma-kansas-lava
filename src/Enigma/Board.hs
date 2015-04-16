@@ -88,7 +88,9 @@ synthesize modName = do
         ucf = filterUCF Nothing kleg ucf0
     return (vhdl, ucf)
   where
-    ucf0 = unlines
+    ucf0 = ucfOne
+
+    ucfOne = unlines
            [ "CONFIG PART=XC3S500E-VQ100-5;"
            , ""
            , "CONFIG PROHIBIT=P99;"
@@ -110,4 +112,23 @@ synthesize modName = do
            , ""
            , "NET \"PS2_DAT\"   LOC=P85 | IOSTANDARD=LVTTL | DRIVE=8 | SLEW=FAST | PULLUP;"
            , "NET \"PS2_CLK\"   LOC=P83 | IOSTANDARD=LVTTL | DRIVE=8 | SLEW=FAST | PULLUP;"
+           ]
+
+    ucfPro = unlines
+           [ "CONFIG PART=XC6SLX9-TQG144-2;"
+           , ""
+           , "CONFIG PROHIBIT=P60;"
+           , "CONFIG PROHIBIT=P69;"
+           , "CONFIG PROHIBIT=P144;"
+           , "NET \"CLK_32MHZ\" LOC=P94 | IOSTANDARD = LVCMOS25 | PERIOD=31.25ns;"
+           , ""
+           , "NET \"LCD_D<0>\"  LOC=P114 | IOSTANDARD=LVTTL;"
+           , "NET \"LCD_D<1>\"  LOC=P115 | IOSTANDARD=LVTTL;"
+           , "NET \"LCD_D<2>\"  LOC=P116 | IOSTANDARD=LVTTL;"
+           , "NET \"LCD_D<3>\"  LOC=P117 | IOSTANDARD=LVTTL;"
+           , "NET \"LCD_RS\"    LOC=P118 | IOSTANDARD=LVTTL;"
+           , "NET \"LCD_EN\"    LOC=P119 | IOSTANDARD=LVTTL;"
+           , ""
+           , "NET \"PS2_DAT\"   LOC=P99 | IOSTANDARD=LVTTL | DRIVE=8 | SLEW=FAST | PULLUP;"
+           , "NET \"PS2_CLK\"   LOC=P97 | IOSTANDARD=LVTTL | DRIVE=8 | SLEW=FAST | PULLUP;"
            ]

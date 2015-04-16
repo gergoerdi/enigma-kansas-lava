@@ -1,3 +1,5 @@
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies, FlexibleContexts #-}
 module Enigma where
 
 import Language.KansasLava
@@ -5,6 +7,7 @@ import Language.KansasLava.Signal
 import Language.KansasLava.Fabric
 import Language.KansasLava.VHDL
 import Data.Sized.Unsigned
+import Data.Sized.Arith
 import Data.Sized.Matrix as Matrix
 import Data.Bits
 import Data.List (find, concatMap)
@@ -15,8 +18,6 @@ import qualified Data.Foldable as F
 import Data.Maybe (mapMaybe, catMaybes)
 
 import Data.Char (ord, chr)
-
-import Debug.Trace
 
 type Letter = X26
 
@@ -39,49 +40,63 @@ permuteBwd p = Matrix.ixmap (p !)
 permuteFwd :: (Size n) => Permutation n -> Matrix n (Signal clk Bool) -> Matrix n (Signal clk Bool)
 permuteFwd p = Matrix.ixmap $ \i -> maybe (error "Not surjective") fst $ find ((== i) . snd) $ Matrix.assocs p
 
--- inp :: (Rep a, Size a, Eq a) => a -> Decoded CLK a
--- inp x = Matrix.forAll $ pureS . (== x)
-
-inp :: Char -> Decoded CLK Letter
-inp x = Matrix.forAll $ pureS . (== x')
-  where
-    x' = toLetter x
-
 encode :: (Rep a, Size a) => Decoded clk a -> Signal clk a
 encode = foldr (\(n, s) x -> mux s (x, pureS n)) undefinedS . Matrix.assocs
 
 decode :: (Rep n, Size n) => Signal clk n -> Decoded clk n
 decode x = Matrix.forAll $ (.==. x) . pureS
 
-rotateFwd :: (Size a, Rep a, Integral a) => Signal clk a -> Decoded clk a -> Decoded clk a
-rotateFwd r = unpackMatrix . bitwise . rotateLS r . bitwise . packMatrix
+rotateFwd :: forall clk a n. (Size a, Rep a, Num a, n ~ W a, Size (SUCC n))
+          => Signal clk a -> Decoded clk a -> Decoded clk a
+rotateFwd r = decode . rotate . encode
+  where
+    rotate x = restrict $ extend x + extend r
 
-rotateBwd :: (Size a, Rep a, Integral a) => Signal clk a -> Decoded clk a -> Decoded clk a
-rotateBwd r = unpackMatrix . bitwise . rotateRS r . bitwise . packMatrix
+    extend :: Signal clk a -> Signal clk (Unsigned (SUCC n))
+    extend = unsigned
+
+    restrict :: Signal clk (Unsigned (SUCC n)) -> Signal clk a
+    restrict x = unsigned $ mux (x .>=. 26) (x, x - 26)
+
+rotateBwd :: forall clk a n. (Size a, Rep a, Num a, n ~ W a, Size (SUCC n))
+          => Signal clk a -> Decoded clk a -> Decoded clk a
+rotateBwd r = decode . rotate . encode
+  where
+    rotate x = restrict $ extend x - extend r
+
+    extend :: Signal clk a -> Signal clk (Unsigned (SUCC n))
+    extend = unsigned
+
+    restrict :: Signal clk (Unsigned (SUCC n)) -> Signal clk a
+    restrict x = unsigned $ mux (x .>=. 26) (x, x + 26)
 
 type Plugboard = Permutation Letter
 type Reflector = Permutation Letter
 type Rotor a = Matrix a (a, Bool)
 
-rotorFwd :: (Size n, Rep n, Integral n)
-         => Rotor n -> Signal clk Bool -> Signal clk n -> Decoded clk n
-         -> (Signal clk Bool, Signal clk n, Decoded clk n)
+unsignedFromBits :: (Size n) => Matrix n Bool -> Unsigned n
+unsignedFromBits = F.foldr (\b x -> 2 * x + if b then 1 else 0) 0
+
+rotorFwd :: forall clk a. (Size a, Rep a, Num a, Size (SUCC (W a)))
+         => Rotor a -> Signal clk Bool -> Signal clk a -> Decoded clk a
+         -> (Signal clk Bool, Signal clk a, Decoded clk a)
 rotorFwd rotor rotateThis r sig = (rotateNext, r', sig')
   where
-    (p, notches) = (fmap fst &&& fmap snd) rotor
-    rotateNext = pureS notches .!. r
+    (p, notches) = (fmap fst &&& (unsignedFromBits . fmap snd)) rotor
+    -- rotateNext = pureS notches `testABit` r
+    rotateNext = low
     r' = mux rotateThis (r, next r)
     sig' = rotateFwd r >>> permuteFwd p $ sig
 
     next x = mux (x .==. pureS maxBound) (x + 1, minBound)
 
-rotorBwd :: (Size n, Rep n, Integral n)
-         => Rotor n -> Signal clk n -> Decoded clk n -> Decoded clk n
+rotorBwd :: (Size a, Rep a, Num a, Size (SUCC (W a)))
+         => Rotor a -> Signal clk a -> Decoded clk a -> Decoded clk a
 rotorBwd rotor r = permuteBwd p >>> rotateBwd r
   where
     p = fmap fst rotor
 
-joinRotors :: (Size n, Bounded n, Enum n, Rep a, Size a, Integral a)
+joinRotors :: (Size n, Bounded n, Enum n, Rep a, Size a, Num a, Size (SUCC (W a)))
            => Matrix n (Rotor a) -> Matrix n (Signal clk a) -> Decoded clk a
            -> (Matrix n (Signal clk a), Decoded clk a)
 joinRotors rotors rs sig =
@@ -92,7 +107,7 @@ joinRotors rotors rs sig =
         let (rotateNext, r', x') = rotorFwd rotor rotateThis r x
         in (r', (rotateNext, x'))
 
-backSignal :: (Size n, Bounded n, Enum n, Rep a, Size a, Integral a)
+backSignal :: (Size n, Bounded n, Enum n, Rep a, Size a, Num a, Size (SUCC (W a)))
            => Matrix n (Rotor a) -> Matrix n (Signal clk a) -> Decoded clk a
            -> Decoded clk a
 backSignal rotors rs sig = F.foldr (uncurry rotorBwd) sig $ Matrix.zipWith (,) rotors rs
