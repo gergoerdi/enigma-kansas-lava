@@ -33,7 +33,7 @@ main = do
     shakeArgsWith shakeOptions flags $ \flags targets -> do
         xilinxConfig <- mkXilinxConfig flags
 
-        (vhdl, ucf) <- synthesize modName
+        (vhdl, ucf, xaws) <- synthesize modName
         return $ Just $ do
             want $ if null targets then [modName <.> "bit"] else targets
 
@@ -41,8 +41,6 @@ main = do
             xilinxRules xilinxConfig modName xaws
   where
     flags = [ Option [] ["xilinx"] (ReqArg (Right . XilinxRoot) "path") "Path to Xilinx toolchain"
-            , Option [] ["papilio"] (ReqArg (Right . PapilioModel) "model") "Target Papilio model (One/Pro)"
             ]
 
     modName = "Enigma"
-    xaws = []

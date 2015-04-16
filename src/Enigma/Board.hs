@@ -5,6 +5,7 @@ module Enigma.Board where
 
 import Enigma
 import Enigma.Keyboard
+import Enigma.DCM
 
 import Language.KansasLava
 import Language.KansasLava.VHDL
@@ -76,19 +77,20 @@ mergeEnabled :: (Clock clk, Rep a)
 mergeEnabled s1 s2 = packEnabled (isEnabled s1 .||. isEnabled s2) $
                      mux (isEnabled s1) (enabledVal s2, enabledVal s1)
 
-synthesize :: String -> IO (String, String)
+synthesize :: String -> IO (String, String, [String])
 synthesize modName = do
     kleg <- reifyFabric $ do
-        theClk "CLK_32MHZ"
-        -- theRst "RESET"
+        theClk "CLK_16MHZ"
         fabric
 
     mod <- netlistCircuit modName kleg
-    let vhdl = genVHDL mod ["work.lava.all", "work.all"]
+    let mod' = dcm16MHz "CLK_16MHZ" mod
+        vhdl = genVHDL mod' ["work.lava.all", "work.all"]
         ucf = filterUCF Nothing kleg ucf0
-    return (vhdl, ucf)
+    return (vhdl, ucf, xaws)
   where
     ucf0 = ucfOne
+    xaws = ["dcm_32_to_16"]
 
     ucfOne = unlines
            [ "CONFIG PART=XC3S500E-VQ100-5;"
