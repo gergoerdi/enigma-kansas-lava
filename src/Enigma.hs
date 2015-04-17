@@ -128,7 +128,7 @@ enigma_ :: (Clock clk, Size n, Enum n)
 enigma_ plugboard rotors reflector rs0 (inputReady, sig) = (outputReady, sig')
   where
     (rs', sig') = enigmaPipe plugboard rotors reflector rs sig
-    rs'' = Matrix.zipWith (curry $ mux $ fromAck inputReady) (delay <$> rs) rs'
+    rs'' = Matrix.zipWith (curry $ mux $ fromAck inputReady) rs rs'
     rs = Matrix.zipWith register rs0 rs''
     outputReady = inputReady
 
