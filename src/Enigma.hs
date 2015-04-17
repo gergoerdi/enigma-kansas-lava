@@ -16,6 +16,7 @@ import Control.Arrow ((&&&), (>>>))
 import Control.Monad (join)
 import qualified Data.Foldable as F
 import Data.Maybe (mapMaybe, catMaybes)
+import Data.Function (fix)
 
 import Data.Char (ord, chr)
 
@@ -128,9 +129,10 @@ enigma_ :: (Clock clk, Size n, Enum n)
 enigma_ plugboard rotors reflector rs0 (inputReady, sig) = (outputReady, sig')
   where
     (rs', sig') = enigmaPipe plugboard rotors reflector rs sig
-    rs'' = Matrix.zipWith (curry $ mux $ fromAck inputReady) rs rs'
-    rs = Matrix.zipWith register rs0 rs''
+    rs = Matrix.zipWith rReg rs0 rs'
     outputReady = inputReady
+
+    rReg r0 r' = fix $ \r -> register r0 $ mux (fromAck inputReady) (r, r')
 
 enigma :: (Clock clk, Size n, Enum n)
         => Plugboard -> Matrix n (Rotor Letter) -> Reflector
