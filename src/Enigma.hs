@@ -77,17 +77,15 @@ type Rotor a = Matrix a (a, Bool)
 unsignedFromBits :: (Size n) => Matrix n Bool -> Unsigned n
 unsignedFromBits = F.foldr (\b x -> 2 * x + if b then 1 else 0) 0
 
-rotorFwd :: forall clk a. (Size a, Rep a, Num a, Size (SUCC (W a)))
+rotorFwd :: forall clk a. (Size a, Rep a, Num a, Size (SUCC (W a)), Integral a)
          => Rotor a -> Signal clk Bool -> Signal clk a -> Decoded clk a
          -> (Signal clk Bool, Signal clk a, Decoded clk a)
 rotorFwd rotor rotateThis r sig = (rotateNext, r', sig')
   where
     (p, notches) = (fmap fst &&& (unsignedFromBits . fmap snd)) rotor
     rotateNext = commentS "rotateNext" (pureS notches) `testABit` r
-    r' = mux rotateThis (r, next r)
+    r' = mux rotateThis (r, loopingIncS r)
     sig' = rotateFwd r >>> permuteFwd p $ sig
-
-    next x = mux (x .==. pureS maxBound) (x + 1, minBound)
 
 rotorBwd :: (Size a, Rep a, Num a, Size (SUCC (W a)))
          => Rotor a -> Signal clk a -> Decoded clk a -> Decoded clk a
@@ -95,7 +93,7 @@ rotorBwd rotor r = permuteBwd p >>> rotateBwd r
   where
     p = fmap fst rotor
 
-joinRotors :: (Size n, Bounded n, Enum n, Rep a, Size a, Num a, Size (SUCC (W a)))
+joinRotors :: (Size n, Bounded n, Enum n, Rep a, Size a, Num a, Size (SUCC (W a)), Integral a)
            => Matrix n (Rotor a) -> Matrix n (Signal clk a) -> Decoded clk a
            -> (Matrix n (Signal clk a), Decoded clk a)
 joinRotors rotors rs sig =
