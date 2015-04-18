@@ -4,18 +4,16 @@ module Enigma where
 
 import Language.KansasLava
 import Language.KansasLava.Signal
-import Language.KansasLava.Fabric
-import Language.KansasLava.VHDL
 import Data.Sized.Unsigned
 import Data.Sized.Arith
 import Data.Sized.Matrix as Matrix
 import Data.Bits
-import Data.List (find, concatMap)
+import Data.List (find)
 import Control.Applicative
 import Control.Arrow ((&&&), (>>>))
 import Control.Monad (join)
 import qualified Data.Foldable as F
-import Data.Maybe (mapMaybe, catMaybes)
+import Data.Maybe (mapMaybe)
 import Data.Function (fix)
 
 import Data.Char (ord, chr)
@@ -47,29 +45,13 @@ encode = foldr (\(n, s) x -> mux s (x, pureS n)) undefinedS . Matrix.assocs
 decode :: (Rep n, Size n) => Signal clk n -> Decoded clk n
 decode x = Matrix.forAll $ (.==. x) . pureS
 
-rotateFwd :: forall clk a n. (Size a, Rep a, Num a, n ~ W a, Size (SUCC n))
+rotateFwd :: forall clk a. (Size a, Rep a, Integral a)
           => Signal clk a -> Decoded clk a -> Decoded clk a
-rotateFwd r = decode . rotate . encode
-  where
-    rotate x = restrict $ extend x + extend r
+rotateFwd r = unpackMatrix . bitwise . rol r . bitwise . packMatrix
 
-    extend :: Signal clk a -> Signal clk (Unsigned (SUCC n))
-    extend = unsigned
-
-    restrict :: Signal clk (Unsigned (SUCC n)) -> Signal clk a
-    restrict x = unsigned $ mux (x .>=. 26) (x, x - 26)
-
-rotateBwd :: forall clk a n. (Size a, Rep a, Num a, n ~ W a, Size (SUCC n))
+rotateBwd :: forall clk a. (Size a, Rep a, Integral a)
           => Signal clk a -> Decoded clk a -> Decoded clk a
-rotateBwd r = decode . rotate . encode
-  where
-    rotate x = restrict $ extend x - extend r
-
-    extend :: Signal clk a -> Signal clk (Unsigned (SUCC n))
-    extend = unsigned
-
-    restrict :: Signal clk (Unsigned (SUCC n)) -> Signal clk a
-    restrict x = unsigned $ mux (x .>=. 26) (x, x + 26)
+rotateBwd r = unpackMatrix . bitwise . ror r . bitwise . packMatrix
 
 type Plugboard = Permutation Letter
 type Reflector = Permutation Letter
@@ -78,7 +60,7 @@ type Rotor a = Matrix a (a, Bool)
 unsignedFromBits :: (Size n) => Matrix n Bool -> Unsigned n
 unsignedFromBits = F.foldr (\b x -> 2 * x + if b then 1 else 0) 0
 
-rotorFwd :: forall clk a. (Size a, Rep a, Num a, Size (SUCC (W a)), Integral a)
+rotorFwd :: forall clk a. (Size a, Rep a, Integral a)
          => Rotor a -> Signal clk Bool -> Signal clk a -> Decoded clk a
          -> (Signal clk Bool, Signal clk a, Decoded clk a)
 rotorFwd rotor rotateThis r sig = (rotateNext, r', sig')
@@ -88,7 +70,7 @@ rotorFwd rotor rotateThis r sig = (rotateNext, r', sig')
     r' = mux rotateThis (r, loopingIncS r)
     sig' = rotateFwd r >>> permuteFwd p $ sig
 
-rotorBwd :: (Size a, Rep a, Num a, Size (SUCC (W a)))
+rotorBwd :: (Size a, Rep a, Integral a)
          => Rotor a -> Signal clk a -> Decoded clk a -> Decoded clk a
 rotorBwd rotor r = permuteBwd p >>> rotateBwd r
   where
@@ -105,7 +87,7 @@ joinRotors rotors rs sig =
         let (rotateNext, r', x') = rotorFwd rotor rotateThis r x
         in (r', (rotateNext, x'))
 
-backSignal :: (Size n, Bounded n, Enum n, Rep a, Size a, Num a, Size (SUCC (W a)))
+backSignal :: (Size n, Bounded n, Enum n, Rep a, Size a, Num a, Size (SUCC (W a)), Integral a)
            => Matrix n (Rotor a) -> Matrix n (Signal clk a) -> Decoded clk a
            -> Decoded clk a
 backSignal rotors rs sig = F.foldr (uncurry rotorBwd) sig $ Matrix.zipWith (,) rotors rs
@@ -168,24 +150,23 @@ rotors = Matrix.fromList $
 rotorInit :: Matrix X3 Letter
 rotorInit = Matrix.fromList . map toLetter $ "GCR"
 
-rotateRS :: (Size n, Rep n, Integral n)
-         => Signal clk n -> Signal clk (Unsigned n) -> Signal clk (Unsigned n)
-rotateRS = flip $ primXS2 shallow "rotateR"
+ror :: (Size n, Rep n, Integral n)
+    => Signal clk n -> Signal clk (Unsigned n) -> Signal clk (Unsigned n)
+ror = flip $ primXS2 shallow "rotateR"
   where
     shallow arg count = optX $ do
         arg <- unX arg
         count <- unX count
         return $ rotateR arg $ fromIntegral count
 
-rotateLS :: (Size n, Rep n, Integral n)
-         => Signal clk n -> Signal clk (Unsigned n) -> Signal clk (Unsigned n)
-rotateLS = flip $ primXS2 shallow "rotateL"
+rol :: (Size n, Rep n, Integral n)
+    => Signal clk n -> Signal clk (Unsigned n) -> Signal clk (Unsigned n)
+rol = flip $ primXS2 shallow "rotateL"
   where
     shallow arg count = optX $ do
         arg <- unX arg
         count <- unX count
         return $ rotateL arg $ fromIntegral count
--}
 
 testInput :: String
 testInput = "ENIGMAWASAREALLYCOOLMACHINE"
@@ -196,7 +177,6 @@ test s = fromSignal $ enigma' $ toSignal s
     enigma' = enigma plugboard rotors reflector rotorInit
     toSignal s = toS $ concatMap (\c -> [Just $ toLetter c, Nothing, Nothing]) s :: Seq (Enabled Letter)
     fromSignal = map fromLetter . take (Prelude.length s) . mapMaybe join . fromS
--}
 
 testEnigma :: (Clock clk) => Signal clk (Enabled Letter) -> Signal clk (Enabled Letter)
 testEnigma = enigma plugboard rotors reflector rotorInit
