@@ -92,11 +92,11 @@ backSignal :: (Size n, Bounded n, Enum n, Rep a, Size a, Num a, Size (SUCC (W a)
            -> Decoded clk a
 backSignal rotors rs sig = F.foldr (uncurry rotorBwd) sig $ Matrix.zipWith (,) rotors rs
 
-enigmaPipe :: (Clock clk, Size n, Enum n)
+enigmaLoop :: (Clock clk, Size n, Enum n)
        => Plugboard -> Matrix n (Rotor Letter) -> Reflector
        -> Matrix n (Signal clk Letter) -> Decoded clk Letter
        -> (Matrix n (Signal clk Letter), Decoded clk Letter)
-enigmaPipe plugboard rotors reflector rs sig0 = (rs', sig5)
+enigmaLoop plugboard rotors reflector rs sig0 = (rs', sig5)
   where
     sig1 = permuteFwd plugboard $ sig0
     (rs', sig2) = joinRotors rotors rs sig1
@@ -110,7 +110,7 @@ enigma_ :: (Clock clk, Size n, Enum n)
         -> (Signal clk Ack, Decoded clk Letter) -> (Signal clk Ack, Decoded clk Letter)
 enigma_ plugboard rotors reflector rs0 (inputReady, sig) = (outputReady, sig')
   where
-    (rs', sig') = enigmaPipe plugboard rotors reflector rs sig
+    (rs', sig') = enigmaLoop plugboard rotors reflector rs sig
     rs = Matrix.zipWith rReg rs0 rs'
     outputReady = inputReady
 
