@@ -54,8 +54,6 @@ board key = LCD{..}
   where
     output = circuit key
 
-    -- mapEnabled unsigned key
-
     lcdPatch = init_LCD $$ phy_Inst_4bit_LCD
     (_lcdAck, lcdSig) = epilogueP (pureS ReturnHome) lcdPatch (mapEnabled writeChar output, ())
     (lcdRs, lcdD, lcdEn) = unpack lcdSig

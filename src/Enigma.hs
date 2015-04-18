@@ -185,22 +185,8 @@ rotateLS = flip $ primXS2 shallow "rotateL"
         arg <- unX arg
         count <- unX count
         return $ rotateL arg $ fromIntegral count
-
-{-
-test :: Signal CLK Letter
-test = takeS 1 $ encode $ permuteFwd plugboard $ rotateFwd rotation input
-  where
-    input = inp 'A'
-    rotation = pureS 1
-
-test' :: IO KLEG
-test' = reifyFabric $ do
-    input <- unpackMatrix <$> inStdLogicVector "INPUT"
-    (rot :: Signal CLK Letter) <- inStdLogicVector "ROT"
-    outStdLogicVector "OUTPUT" $ packMatrix $ rotateFwd rot input
 -}
 
-{-
 testInput :: String
 testInput = "ENIGMAWASAREALLYCOOLMACHINE"
 
@@ -212,5 +198,5 @@ test s = fromSignal $ enigma' $ toSignal s
     fromSignal = map fromLetter . take (Prelude.length s) . mapMaybe join . fromS
 -}
 
-testEnigma :: (Clock clk) => (Signal clk (Enabled Letter)) -> Signal clk (Enabled Letter)
+testEnigma :: (Clock clk) => Signal clk (Enabled Letter) -> Signal clk (Enabled Letter)
 testEnigma = enigma plugboard rotors reflector rotorInit
