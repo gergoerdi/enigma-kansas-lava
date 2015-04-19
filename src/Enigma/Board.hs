@@ -109,6 +109,6 @@ synthesize modName = do
            , "NET \"LCD_RS\"    LOC=P98 | IOSTANDARD=LVTTL;"
            , "NET \"LCD_EN\"    LOC=P2  | IOSTANDARD=LVTTL;"
            , ""
-           , "NET \"PS2_DAT\"   LOC=P85 | IOSTANDARD=LVTTL | DRIVE=8 | SLEW=FAST | PULLUP;"
-           , "NET \"PS2_CLK\"   LOC=P83 | IOSTANDARD=LVTTL | DRIVE=8 | SLEW=FAST | PULLUP;"
+           , "NET \"PS2_DAT\"   LOC=P4 | IOSTANDARD=LVTTL | DRIVE=8 | SLEW=FAST | PULLUP;"
+           , "NET \"PS2_CLK\"   LOC=P3 | IOSTANDARD=LVTTL | DRIVE=8 | SLEW=FAST | PULLUP;"
            ]
