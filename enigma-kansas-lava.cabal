@@ -25,7 +25,7 @@ executable enigma-kansas-lava
         netlist >=0.3 && <0.4,
         netlist-to-vhdl >=0.3 && <0.4,
         kansas-lava-cores >= 0.1 && < 0.2,
-        kansas-lava-papilio >= 0.1.1 && < 0.2,
+        kansas-lava-papilio >= 0.2.1 && < 0.4,
         kansas-lava-shake >= 0.1.1 && < 0.2,
         shake,
         directory

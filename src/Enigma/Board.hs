@@ -5,7 +5,6 @@ module Enigma.Board where
 
 import Enigma
 import Enigma.Keyboard
-import Enigma.DCM
 
 import Language.KansasLava
 import Language.KansasLava.VHDL
@@ -13,6 +12,7 @@ import Hardware.KansasLava.Boards.UCF (filterUCF)
 import Language.Netlist.GenVHDL (genVHDL)
 import Hardware.KansasLava.LCD.ST7066U
 import Hardware.KansasLava.PS2
+import Hardware.KansasLava.Xilinx.DCM
 
 import Control.Applicative
 
@@ -82,12 +82,13 @@ synthesize modName = do
         fabric
 
     mod <- netlistCircuit modName kleg
-    let mod' = dcm16MHz "CLK_16MHZ" mod
+    let mod' = dcm dcmName "CLK_32MHZ" "CLK_16MHZ" mod
         vhdl = genVHDL mod' ["work.lava.all", "work.all"]
         ucf = filterUCF Nothing kleg ucf0
     return (vhdl, ucf, xaws)
   where
-    xaws = ["dcm_32_to_16"]
+    dcmName = "dcm_32_to_16"
+    xaws = [dcmName]
 
     ucf0 = unlines
            [ "CONFIG PART=XC3S500E-VQ100-5;"
