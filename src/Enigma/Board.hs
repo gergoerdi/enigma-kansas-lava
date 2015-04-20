@@ -79,6 +79,7 @@ synthesize :: String -> IO (String, String, [String])
 synthesize modName = do
     kleg <- reifyFabric $ do
         theClk "CLK_16MHZ"
+        theRst "RESET"
         fabric
 
     mod <- netlistCircuit modName kleg
@@ -112,4 +113,6 @@ synthesize modName = do
            , ""
            , "NET \"PS2_DAT\"   LOC=P4 | IOSTANDARD=LVTTL | DRIVE=8 | SLEW=FAST | PULLUP;"
            , "NET \"PS2_CLK\"   LOC=P3 | IOSTANDARD=LVTTL | DRIVE=8 | SLEW=FAST | PULLUP;"
+           , ""
+           , "NET \"RESET\"     LOC=P5 | IOSTANDARD=LVTTL | PULLDOWN;"
            ]
