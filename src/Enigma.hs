@@ -57,16 +57,13 @@ type Plugboard = Permutation Letter
 type Reflector = Permutation Letter
 type Rotor a = Matrix a (a, Bool)
 
-unsignedFromBits :: (Size n) => Matrix n Bool -> Unsigned n
-unsignedFromBits = F.foldr (\b x -> 2 * x + if b then 1 else 0) 0
-
 rotorFwd :: forall clk a. (Size a, Rep a, Integral a)
          => Rotor a -> Signal clk Bool -> Signal clk a -> Decoded clk a
          -> (Signal clk Bool, Signal clk a, Decoded clk a)
 rotorFwd rotor rotateThis r sig = (rotateNext, r', sig')
   where
-    (p, notches) = (fmap fst &&& (unsignedFromBits . fmap snd)) rotor
-    rotateNext = commentS "rotateNext" (pureS notches) `testABit` r
+    (p, notches) = (fmap fst &&& fmap snd) rotor
+    rotateNext = packMatrix (pureS <$> notches) .!. r
     r' = mux rotateThis (r, loopingIncS r)
     sig' = rotateFwd r >>> permuteFwd p $ sig
 
