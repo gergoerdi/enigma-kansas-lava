@@ -35,7 +35,7 @@ fromScanCode c = Map.lookup c scancodes
                 ]
 
 keypress :: (Clock clk) => Signal clk (Enabled (Bool, U8)) -> Signal clk (Enabled U8)
-keypress event = commentS "keypress" $ mapEnabled (funMap fromScanCode) scancode'
+keypress event = commentS "keypress" $ funMap (Just . (fromScanCode =<<)) scancode'
   where
     (pressed, scancode) = unpack $ enabledVal event
     scancode' = runRTL $ do
