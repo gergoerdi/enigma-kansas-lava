@@ -1,3 +1,5 @@
 Kansas Lava implementation of the Enigma machine.
 
 Based on the Cryptol spec at https://github.com/rsnikhil/Enigma_Cryptol_Bluespec_BSV
+
+Slides at http://unsafePerform.IO/projects/lava/2015-05-sg-kansas-lava-talk.pdf
